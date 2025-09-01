@@ -34,7 +34,7 @@ func (api ApiHandler) RegisterUserHandler(request events.APIGatewayProxyRequest)
 		return events.APIGatewayProxyResponse{
 			Body:       "invalid request - field empty",
 			StatusCode: http.StatusBadRequest,
-		}, err
+		}, nil
 	}
 
 	userExists, err := api.dbStore.DoesUSerExist(registerUser.Username)
@@ -72,7 +72,6 @@ func (api ApiHandler) RegisterUserHandler(request events.APIGatewayProxyRequest)
 		Body:       "succesfully registered user",
 		StatusCode: http.StatusOK,
 	}, nil
-	// return nil
 }
 
 func (api ApiHandler) LoginUser(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
@@ -96,22 +95,39 @@ func (api ApiHandler) LoginUser(request events.APIGatewayProxyRequest) (events.A
 	user, err := api.dbStore.GetUser(loginRequest.Username)
 
 	if err != nil {
+		// Log the actual error to CloudWatch for debugging
+		fmt.Printf("Error getting user from database: %v\n", err)
+		// A user not found error from the database will return here.
+		// It's better to return an invalid credentials message to avoid giving
+		// away information about which usernames exist.
 		return events.APIGatewayProxyResponse{
-			Body:       "internal server errror",
-			StatusCode: http.StatusInternalServerError,
-		}, err
-
+			Body:       "invalid user credentials",
+			StatusCode: http.StatusBadRequest,
+		}, nil
 	}
+
+	// Log the retrieved user data for debugging
+	fmt.Printf("User retrieved from database: %+v\n", user)
 
 	if !types.ValidatePassword(user.PasswordHash, loginRequest.Password) {
 		return events.APIGatewayProxyResponse{
 			Body:       "invalid user credentials",
 			StatusCode: http.StatusBadRequest,
-		}, err
+		}, nil
 	}
 
+	accessToken := types.CreateToken(user)
+	if accessToken == "" {
+		fmt.Println("Error creating access token")
+		return events.APIGatewayProxyResponse{
+			Body:       "internal server error",
+			StatusCode: http.StatusInternalServerError,
+		}, nil
+	}
+	successMsg := fmt.Sprintf(`{"access token": "%s"}`, accessToken)
+
 	return events.APIGatewayProxyResponse{
-		Body: "successfully logged in",
+		Body:       successMsg,
 		StatusCode: http.StatusOK,
 	}, nil
 }
