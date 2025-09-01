@@ -56,8 +56,11 @@ func NewGoCdkStack(scope constructs.Construct, id string, props *GoCdkStackProps
 	registerResource := api.Root().AddResource(jsii.String("register"), nil)
 	registerResource.AddMethod(jsii.String("POST"), integration, nil)
 
-	loginResource := api.Root().AddResource(jsii.String("login"), nil)
-	loginResource.AddMethod(jsii.String("POST"), integration, nil)
+	loginRoute := api.Root().AddResource(jsii.String("login"), nil)
+	loginRoute.AddMethod(jsii.String("POST"), integration, nil)
+	
+	protectedResource := api.Root().AddResource(jsii.String("protected"), nil)
+	protectedResource.AddMethod(jsii.String("GET"), integration, nil)
 
 	return stack
 }
